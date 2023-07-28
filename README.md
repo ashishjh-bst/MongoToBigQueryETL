@@ -22,4 +22,4 @@ and `bigQueryTableName` is the name of the BQ table to be created.
 
 
 # CAVEATS 
-ARRAY and OBJECTS are right now migrated as `STRINGS`, feel free to open a PR to support migration for them. 
+ARRAY and OBJECTS are right now migrated as `STRING`, feel free to open a PR to support migration for them. 
