@@ -9,9 +9,11 @@ This script auto-creates the bigquery table by creating schema after going throu
 
 There are three environment variables needed for this. 
 
-`MONGODB_URI` - the uri needed by the function to connect to your mongodb 
-`MONGODB_DATABASE_NAME` - the name of the database in which your collection resides 
-`BIGQUERY_DATASET_ID` - the dataset in which the bigquery table should be created
+- `MONGODB_URI` - the uri needed by the function to connect to your mongodb
+
+- `MONGODB_DATABASE_NAME` - the name of the database in which your collection resides
+
+- `BIGQUERY_DATASET_ID` - the dataset in which the bigquery table should be created
 
 The name of the collection and the bigquery table name are taken in POST request body. 
 
