@@ -27,6 +27,14 @@ function mapMongoToBigQueryType(mongoValue) {
   }
 }
 
+function createBatches(arr, batchSize) {
+  const batches = [];
+  for (let i = 0; i < arr.length; i += batchSize) {
+    batches.push(arr.slice(i, i + batchSize));
+  }
+  return batches;
+}
+
 exports.migrateMongoToBigQuery = async (req, res) => {
   try {
     // Get MongoDB collection name and BigQuery table name from the request body
@@ -36,6 +44,7 @@ exports.migrateMongoToBigQuery = async (req, res) => {
     const mongoURI = process.env.MONGODB_URI;
     const dbName = process.env.MONGODB_DATABASE_NAME;
     const bigQueryDatasetId = process.env.BIGQUERY_DATASET_ID;
+    const batchInsertSize = process.env.BATCH_INSERT_SIZE || 100;
 
     // Connect to MongoDB
     const mongoClient = await MongoClient.connect(mongoURI, {
@@ -96,25 +105,27 @@ exports.migrateMongoToBigQuery = async (req, res) => {
         json: document,
       };
     });
-
-    // Insert data into BigQuery
-    await bigquery.dataset(bigQueryDatasetId).table(bigQueryTableName).insert(rows, { raw: true, schema: bigQuerySchema })
-    .then((data) => {
-      console.log('Data inserted into BigQuery:', data[0]);
-    })
-    .catch((err) => {
-      // An API error or partial failure occurred.
-      console.error("FAILED", err.message);
-      if (err.name === 'PartialFailureError') {
-        console.error("PARTIAL FAILURE ERROR");
-        // Some rows failed to insert, while others may have succeeded.
-        err.errors.forEach(e => {
-          console.log(e.row);
-          console.error("ERROR", e);
-        });
+    
+    let batches = createBatches(rows, batchInsertSize);
+    for await (let batch of batches){
+      // Insert data into BigQuery in batches
+      try{
+        data = await bigquery.dataset(bigQueryDatasetId).table(bigQueryTableName).insert(batch, { raw: true, schema: bigQuerySchema })
+        console.log('Data inserted into BigQuery:', data);
+      }catch(err){
+        // An API error or partial failure occurred.
+        console.error("FAILED", err.message);
+        if (err.name === 'PartialFailureError') {
+          console.error("PARTIAL FAILURE ERROR");
+          // Some rows failed to insert, while others may have succeeded.
+          err.errors.forEach(e => {
+            console.log(e.row);
+            console.error("ERROR", e);
+          });
+        }
+        throw err;
       }
-      throw err;
-    });
+    }
     res.status(200).send('Migration completed successfully.');
   } catch (error) {
     console.error('Error during migration:', error.message);
